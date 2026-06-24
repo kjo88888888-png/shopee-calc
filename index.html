@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>쇼피 글로벌 마진 계산기 (관세 및 마케팅 완벽 반영)</title>
+    <title>쇼피 글로벌 마진 계산기 V3.6</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         :root {
@@ -51,7 +51,7 @@
         .common-setting { margin-top: 12px; padding: 10px; background: rgba(238, 77, 45, 0.05); border-radius: 6px; display: flex; gap: 15px; justify-content: center; }
         .common-setting .form-group { display: flex; align-items: center; gap: 6px; }
 
-        /* 국기 아이콘 및 다크모드 시인성 테두리 */
+        /* 국기 아이콘 스타일 */
         .flag-icon {
             width: 22px;
             height: 15px;
@@ -78,7 +78,7 @@
         .country-btn.active { background: var(--shopee-orange); color: white; border-color: var(--shopee-orange); font-weight: bold; }
         .country-btn .flag-icon { margin-right: 4px; width: 16px; height: 11px; }
 
-        /* 입력 폼 6열 배치 확장 */
+        /* 입력 폼 */
         .calc-inputs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
         @media (min-width: 900px) { .calc-inputs { grid-template-columns: repeat(6, 1fr); } }
         .calc-inputs .form-group { display: flex; flex-direction: column; gap: 4px; }
@@ -92,7 +92,6 @@
         .analysis-table td { text-align: right; }
         .result-row { background: rgba(238, 77, 45, 0.1); font-weight: bold; font-size: 14px; color: var(--shopee-orange); }
         
-        /* 관세 경고 배지 */
         .tax-warning { background-color: var(--danger-color); color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; display: inline-block; margin-left: 8px; animation: blink 1.5s infinite; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
@@ -109,19 +108,28 @@
         .comparison-table td.country-cell { text-align: left; display: flex; align-items: center; padding-left: 10px; }
         
         .btn-refresh { width: 100%; padding: 10px; background: var(--shopee-orange); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px; margin-top: 10px; }
+
+        /* 💡 새로고침 깜빡임 애니메이션용 CSS 효과 */
+        .flash-effect {
+            animation: flashAnimation 0.4s ease-out;
+        }
+        @keyframes flashAnimation {
+            0% { opacity: 0.3; transform: scale(0.995); }
+            100% { opacity: 1; transform: scale(1); }
+        }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h1><i class="fa-solid fa-cart-shopping"></i> 쇼피 글로벌 마진 계산기 V3.5 (관세/마케팅 완벽 통합형)</h1>
+        <h1><i class="fa-solid fa-cart-shopping"></i> 쇼피 글로벌 마진 계산기 V3.6</h1>
         <button class="theme-toggle-btn" onclick="toggleTheme()">
             <i class="fa-solid fa-circle-half-stroke"></i> 다크/라이트 모드
         </button>
     </div>
 
     <div class="main-container">
-        <div class="card">
+        <div class="card" id="settingsCard">
             <h2><i class="fa-solid fa-gears"></i> 나라별 기본 수수료 및 면세한도 설정</h2>
             <div class="grid-inputs" id="countrySettingsContainer"></div>
             <div class="common-setting">
@@ -134,16 +142,16 @@
                     <input type="number" id="pgFee" value="3.0" style="width:40px; text-align:center; border:1px solid var(--border-color); background:var(--input-bg); color:var(--text-color);"> %
                 </div>
             </div>
-            <button class="btn-refresh" onclick="calculateAll()">환율/마진 새로고침</button>
+            <button class="btn-refresh" onclick="triggerRefresh()">환율/마진 새로고침</button>
         </div>
 
-        <div class="card">
+        <div class="card" id="rateCard">
             <h2><i class="fa-solid fa-sack-dollar"></i> 현재 환율 (1 KRW 기준)</h2>
             <div class="rate-list" id="exchangeRateContainer"></div>
         </div>
     </div>
 
-    <div class="calc-section">
+    <div class="calc-section" id="calcSection">
         <h2><i class="fa-solid fa-calculator"></i> 마진 상세 계산</h2>
         <div class="country-selector" id="countrySelector"></div>
 
@@ -180,7 +188,7 @@
                 <td id="tablePriceLocal" style="color:var(--shopee-orange); font-weight:bold;">-</td>
             </tr>
             <tr>
-                <th>- 쇼피 수수료 (설정 수수료율 기준, 할인 전 가격 적용)</th>
+                <th>- 쇼피 수수료 (설정 수수료율 기준)</th>
                 <td id="tableShopeeFee">-</td>
             </tr>
             <tr>
@@ -240,7 +248,6 @@
     </div>
 
     <script>
-        // 면세 한도(taxLimit) 및 싱가포르 부가세율(taxRate) 추가 정의
         const countries = {
             TH: { name: '태국', currency: 'THB', rate: 0.026100, fee: 13.35, flagCode: 'th', taxLimit: 1500, taxRate: 0.07 },
             SG: { name: '싱가포르', currency: 'SGD', rate: 0.000971, fee: 13.35, flagCode: 'sg', taxLimit: 400, taxRate: 0.09 },
@@ -248,7 +255,7 @@
             VN: { name: '베트남', currency: 'VND', rate: 18.250000, fee: 13.35, flagCode: 'vn', taxLimit: 1000000, taxRate: 0.10 },
             TW: { name: '대만', currency: 'TWD', rate: 0.023300, fee: 12.5, flagCode: 'tw', taxLimit: 2000, taxRate: 0.05 },
             PH: { name: '필리핀', currency: 'PHP', rate: 0.042100, fee: 12.5, flagCode: 'ph', taxLimit: 10000, taxRate: 0.12 },
-            BR: { name: '브라질', currency: 'BRL', rate: 0.003920, fee: 15.0, flagCode: 'br', taxLimit: 250, taxRate: 0.60 }, // 브라질은 면세한도 초과시 고세율
+            BR: { name: '브라질', currency: 'BRL', rate: 0.003920, fee: 15.0, flagCode: 'br', taxLimit: 250, taxRate: 0.60 },
             MX: { name: '멕시코', currency: 'MXN', rate: 0.013100, fee: 15.0, flagCode: 'mx', taxLimit: 1000, taxRate: 0.16 }
         };
 
@@ -256,6 +263,22 @@
 
         function toggleTheme() {
             document.body.classList.toggle('dark-mode');
+        }
+
+        // 💡 버튼을 눌렀을 때 깜빡이는 트릭 함수
+        function triggerRefresh() {
+            const targets = ['rateCard', 'calcSection', 'settingsCard'];
+            
+            targets.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.classList.remove('flash-effect');
+                    void el.offsetWidth; // 브라우저가 애니메이션을 리셋하게 유도하는 마법의 코드
+                    el.classList.add('flash-effect');
+                }
+            });
+
+            calculateAll(); // 연산 실행
         }
 
         function init() {
@@ -309,10 +332,10 @@
         function calculateAll() {
             const costKrw = parseFloat(document.getElementById('costKrw').value) || 0;
             const localShippingKrw = parseFloat(document.getElementById('localShippingKrw').value) || 0;
-            const packingCostKrw = parseFloat(document.getElementById('packingCostKrw').value) || 0; // 추가항목
+            const packingCostKrw = parseFloat(document.getElementById('packingCostKrw').value) || 0;
             const weightG = parseFloat(document.getElementById('weightG').value) || 0;
             const priceLocalInput = parseFloat(document.getElementById('priceLocal').value) || 0;
-            const voucherInput = parseFloat(document.getElementById('voucherLocal').value) || 0; // 추가항목
+            const voucherInput = parseFloat(document.getElementById('voucherLocal').value) || 0;
             
             const payoneerRate = (parseFloat(document.getElementById('payoneerFee').value) || 0) / 100;
             const pgRate = (parseFloat(document.getElementById('pgFee').value) || 0) / 100;
@@ -325,7 +348,6 @@
                 const c = countries[code];
                 const feeRate = (parseFloat(document.getElementById(`fee_${code}`).value) || c.fee) / 100;
                 
-                // 기준 국가 대비 타국가 자동 판매가 연동 환산 계산
                 let priceLocal = priceLocalInput;
                 let voucherLocal = voucherInput;
                 if (code !== currentCountryCode) {
@@ -336,9 +358,8 @@
                     voucherLocal = Math.round(voucherKrw * c.rate);
                 }
 
-                const finalCustomerPrice = priceLocal - voucherLocal; // 바우처 차감된 실판매가
+                const finalCustomerPrice = priceLocal - voucherLocal;
 
-                // 관세/GST 부가세 조건부 계산 로직
                 let estimatedTax = 0;
                 let taxWarningHtml = '';
                 if (finalCustomerPrice > c.taxLimit) {
@@ -346,15 +367,12 @@
                     taxWarningHtml = `<span class="tax-warning">관세주의</span>`;
                 }
 
-                // 쇼피 수수료는 마케팅 할인전(원래 판매가) 기준으로 부과됨
                 const shopeeFee = priceLocal * feeRate;
                 const pgPayoneerFee = finalCustomerPrice * (payoneerRate + pgRate);
                 
-                // 최종 정산액 공식 (세금 차감 반영)
                 const settlementLocal = finalCustomerPrice - shopeeFee - pgPayoneerFee - estimatedTax;
                 const settlementKrw = Math.round(settlementLocal / c.rate);
                 
-                // 원가단 총합 계산 (원가 + 국내 배송 + 포장 부자재)
                 const totalCostBase = costKrw + localShippingKrw + packingCostKrw;
                 const finalProfitKrw = settlementKrw - totalCostBase - intlShippingKrw;
                 const marginRate = settlementKrw > 0 ? ((finalProfitKrw / settlementKrw) * 100).toFixed(1) : 0;
