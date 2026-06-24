@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>쇼피 글로벌 마진 계산기 V3.1</title>
+    <title>쇼피 글로벌 마진 계산기 (환율 및 UI 최적화)</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         :root {
@@ -12,7 +12,7 @@
             --bg-color: #f5f5f5;
             --card-bg: #ffffff;
             --text-color: #333333;
-            --text-color-primary: #1a1a1a; /* 시인성 강화 메인 텍스트 */
+            --text-color-primary: #1a1a1a;
             --border-color: #e0e0e0;
             --table-header: #f8f9fa;
             --input-bg: #ffffff;
@@ -22,7 +22,7 @@
             --bg-color: #121212;
             --card-bg: #1e1e1e;
             --text-color: #e0e0e0;
-            --text-color-primary: #f5f5f5; /* 다크모드 시인성 강화 메인 텍스트 */
+            --text-color-primary: #ffffff; /* 다크모드에서 글자 선명하게 */
             --border-color: #333333;
             --table-header: #2c2c2c;
             --input-bg: #2a2a2a;
@@ -36,7 +36,7 @@
         
         .theme-toggle-btn { background: var(--shopee-orange); color: white; border: none; padding: 6px 12px; border-radius: 20px; cursor: pointer; font-size: 11px; font-weight: bold; display: flex; align-items: center; gap: 5px; }
 
-        /* PC 버전 기본 레이아웃: 좌우 배치 */
+        /* 메인 레이아웃 */
         .main-container { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 12px; margin-bottom: 12px; }
         .card { background: var(--card-bg); padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid var(--border-color); }
         .card h2 { font-size: 14px; margin-bottom: 12px; color: var(--shopee-orange); display: flex; align-items: center; gap: 6px; }
@@ -50,27 +50,46 @@
         .common-setting { margin-top: 12px; padding: 10px; background: rgba(238, 77, 45, 0.05); border-radius: 6px; display: flex; gap: 15px; justify-content: center; }
         .common-setting .form-group { display: flex; align-items: center; gap: 6px; }
 
-        /* 환율 리스트 - 국기 아이콘 및 시인성 강화 */
+        /* 💡 국기 아이콘 스타일 - 라이트/다크모드 시인성 확보 */
+        .flag-icon {
+            width: 22px;
+            height: 15px;
+            object-fit: cover;
+            vertical-align: middle;
+            border-radius: 2px;
+            margin-right: 8px;
+            display: inline-block;
+            /* 라이트모드용 미세한 테두리 및 그림자 */
+            box-shadow: 0 0 0 1px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        body.dark-mode .flag-icon {
+            /* 다크모드용 테두리 및 그림자 변경 (어두운 곳에서도 국기 경계선 명확하게) */
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.25), 0 1px 3px rgba(0,0,0,0.4);
+        }
+
+        /* 환율 리스트 */
         .rate-list { display: grid; grid-template-columns: 1fr; gap: 4px; }
-        .rate-item { display: flex; justify-content: space-between; align-items: center; padding: 5px 8px; border-bottom: 1px solid var(--border-color); font-size: 12px; color: var(--text-color-primary); }
-        .rate-item .country-info { display: flex; align-items: center; gap: 8px; }
-        .rate-item img.flag { width: 22px; height: 16px; object-fit: cover; border: 1px solid rgba(0,0,0,0.1); border-radius: 2px; }
+        .rate-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-bottom: 1px solid var(--border-color); font-size: 12px; color: var(--text-color-primary); }
+        .rate-item .country-info { display: flex; align-items: center; }
         .rate-item span.code { font-weight: 500; }
         .rate-item span.value { font-weight: 700; color: var(--text-color-primary); }
 
         .calc-section { background: var(--card-bg); padding: 15px; border-radius: 8px; margin-bottom: 12px; border: 1px solid var(--border-color); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         
-        /* 국가 버튼 스크롤 최적화 */
+        /* 국가 버튼 */
         .country-selector { display: flex; gap: 6px; margin: 10px 0; overflow-x: auto; padding-bottom: 6px; -webkit-overflow-scrolling: touch; }
-        .country-btn { flex: 0 0 auto; padding: 6px 12px; border: 1px solid var(--border-color); background: var(--input-bg); border-radius: 4px; cursor: pointer; font-size: 12px; color: var(--text-color-primary); font-weight: 500; }
+        .country-btn { flex: 0 0 auto; padding: 6px 12px; border: 1px solid var(--border-color); background: var(--input-bg); border-radius: 4px; cursor: pointer; font-size: 12px; color: var(--text-color-primary); font-weight: 500; display: flex; align-items: center; }
         .country-btn.active { background: var(--shopee-orange); color: white; border-color: var(--shopee-orange); font-weight: bold; }
+        .country-btn .flag-icon { margin-right: 4px; width: 16px; height: 11px; }
 
-        /* 입력 폼 배치 */
+        /* 입력 폼 */
         .calc-inputs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; }
         .calc-inputs .form-group { display: flex; flex-direction: column; gap: 4px; }
         .calc-inputs label { font-weight: bold; font-size: 11px; color: var(--shopee-orange); }
         .calc-inputs input { padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; text-align: right; background: var(--input-bg); color: var(--text-color); font-weight: bold; font-size: 12px; width: 100%; }
 
+        /* 상세 계산서 테이블 */
         .analysis-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
         .analysis-table th, .analysis-table td { border: 1px solid var(--border-color); padding: 8px; font-size: 12px; color: var(--text-color-primary); }
         .analysis-table th { background: var(--table-header); text-align: left; width: 45%; }
@@ -83,15 +102,15 @@
         .summary-box .title { font-size: 10px; opacity: 0.7; margin-bottom: 2px; }
         .summary-box .value { font-size: 13px; font-weight: bold; color: var(--text-color-primary); }
 
-        /* 비교 테이블 가로 스크롤 감싸기 */
+        /* 비교 테이블 */
         .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border-color); border-radius: 6px; }
         .comparison-table { width: 100%; border-collapse: collapse; font-size: 11px; white-space: nowrap; }
-        .comparison-table th { background: var(--table-header); border-bottom: 2px solid var(--border-color); padding: 8px; color: var(--shopee-orange); }
-        .comparison-table td { border-bottom: 1px solid var(--border-color); padding: 8px; text-align: center; color: var(--text-color-primary); }
+        .comparison-table th { background: var(--table-header); border-bottom: 2px solid var(--border-color); padding: 8px; color: var(--shopee-orange); text-align: center; }
+        .comparison-table td { border-bottom: 1px solid var(--border-color); padding: 8px; text-align: right; color: var(--text-color-primary); }
+        .comparison-table td.country-cell { text-align: left; display: flex; align-items: center; padding-left: 10px; }
         
         .btn-refresh { width: 100%; padding: 10px; background: var(--shopee-orange); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px; margin-top: 10px; }
 
-        /* 📱 모바일 최적화 반응형 CSS */
         @media (max-width: 768px) {
             body { padding: 8px; }
             .header { padding: 10px; justify-content: center; flex-direction: column; text-align: center; }
@@ -107,7 +126,7 @@
 <body>
 
     <div class="header">
-        <h1><i class="fa-solid fa-cart-shopping"></i> 쇼피 글로벌 마진 계산기 V3.1</h1>
+        <h1><i class="fa-solid fa-cart-shopping"></i> 쇼피 글로벌 마진 계산기 V3.2</h1>
         <div style="display: flex; align-items: center; gap: 10px; justify-content: center; width: 100%; max-width: 300px;">
             <button class="theme-toggle-btn" onclick="toggleTheme()">
                 <i class="fa-solid fa-circle-half-stroke"></i> 다크/라이트 모드
@@ -129,7 +148,7 @@
                     <input type="number" id="pgFee" value="3.0" style="width:40px; text-align:center; border:1px solid var(--border-color); background:var(--input-bg); color:var(--text-color);"> %
                 </div>
             </div>
-            <button class="btn-refresh" onclick="calculateAll()">데이터 새로고침</button>
+            <button class="btn-refresh" onclick="calculateAll()">환율/마진 새로고침</button>
         </div>
 
         <div class="card">
@@ -207,7 +226,7 @@
             <table class="comparison-table">
                 <thead>
                     <tr>
-                        <th>국가</th>
+                        <th style="text-align: left; padding-left: 10px;">국가</th>
                         <th>판매가</th>
                         <th>정산액</th>
                         <th>환율</th>
@@ -252,7 +271,7 @@
             Object.keys(countries).forEach(code => {
                 const c = countries[code];
                 
-                // 설정 섹션
+                // 1. 나라별 수수료 설정 폼 생성
                 settingsContainer.innerHTML += `
                     <div class="country-setting">
                         <label>${c.name} (${c.currency})</label>
@@ -262,20 +281,23 @@
                     </div>
                 `;
                 
-                // 환율 섹션 - 국기 아이콘 추가 및 시인성 강화
+                // 2. 상단 우측 환율 리스트 생성 (국기 아이콘 완벽 반영)
                 rateContainer.innerHTML += `
                     <div class="rate-item">
                         <div class="country-info">
-                            <img src="https://flagcdn.com/w40/${c.flagCode}.png" alt="${c.name} flag" class="flag">
-                            <span class="code">${c.name} (${c.currency})</span>
+                            <img src="https://flagcdn.com/w40/${c.flagCode}.png" class="flag-icon" alt="${c.name}">
+                            <span class="code"><b>${c.name}</b> (${c.currency})</span>
                         </div>
                         <span class="value">${c.rate.toFixed(6)}</span>
                     </div>
                 `;
                 
-                // 국가 선택 버튼
+                // 3. 마진 상세 계산의 국가 선택 탭 버튼 생성
                 selectorContainer.innerHTML += `
-                    <button class="country-btn ${code === currentCountryCode ? 'active' : ''}" id="btn_${code}" onclick="selectCountry('${code}')">${c.name}</button>
+                    <button class="country-btn ${code === currentCountryCode ? 'active' : ''}" id="btn_${code}" onclick="selectCountry('${code}')">
+                        <img src="https://flagcdn.com/w40/${c.flagCode}.png" class="flag-icon" style="width:16px; height:11px; margin-right:4px;">
+                        ${c.name}
+                    </button>
                 `;
             });
             calculateAll();
@@ -295,7 +317,7 @@
             const priceLocalInput = parseFloat(document.getElementById('priceLocal').value) || 0;
             const payoneerRate = (parseFloat(document.getElementById('payoneerFee').value) || 0) / 100;
             const pgRate = (parseFloat(document.getElementById('pgFee').value) || 0) / 100;
-            const intlShippingKrw = (weightG * 10) + 388; // 기존 배송비 수식 유지
+            const intlShippingKrw = (weightG * 10) + 388; // 배송비 수식
 
             const tbody = document.getElementById('comparisonTableBody');
             tbody.innerHTML = '';
@@ -332,16 +354,20 @@
                     document.getElementById('sumMarginRate').innerText = `${marginRate}%`;
                 }
 
+                // 4. 하단 나라별 마진 비교 테이블 행 추가 (국기 아이콘 완벽 반영)
                 tbody.innerHTML += `
                     <tr>
-                        <td><b>${c.name}</b></td>
+                        <td class="country-cell">
+                            <img src="https://flagcdn.com/w40/${c.flagCode}.png" class="flag-icon" alt="${c.name}">
+                            <b>${c.name}</b>
+                        </td>
                         <td>${priceLocal.toLocaleString()}</td>
                         <td>${Math.round(settlementLocal).toLocaleString()}</td>
                         <td>${c.rate.toFixed(5)}</td>
                         <td>${settlementKrw.toLocaleString()}</td>
                         <td>${Math.round(intlShippingKrw).toLocaleString()}</td>
                         <td style="font-weight:bold; color:${finalProfitKrw >= 0 ? '#EE4D2D' : '#d32f2f'}">${finalProfitKrw.toLocaleString()}</td>
-                        <td style="font-weight:bold;">${marginRate}%</td>
+                        <td style="font-weight:bold; color:${finalProfitKrw >= 0 ? '#4CAF50' : '#d32f2f'}">${marginRate}%</td>
                     </tr>
                 `;
             });
